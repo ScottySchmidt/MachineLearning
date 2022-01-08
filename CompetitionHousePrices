@@ -1,9 +1,49 @@
-With 79 explanatory variables describing (almost) every aspect of residential homes in Ames, Iowa, this competition challenges you to predict the final price of each home.
+'''
+With 79 explanatory variables describing (almost) every aspect of residential homes in Ames, Iowa.
+This competition challenges you to predict the final price of each home.
 
 This will use the following:
 Creative feature engineering 
 Advanced regression techniques like random forest and gradient boosting
 
 The Ames Housing dataset was compiled by Dean De Cock for use in data science education.
-It's an incredible alternative for data scientists looking for a modernized and expanded version of the often cited Boston Housing dataset. 
---------------------------------------------
+It's an incredible alternative for data scientists looking for a modernized and
+expanded version of the often cited Boston Housing dataset. 
+'''
+import pandas as pd
+
+data=pd.read_csv(r'C:\Users\sschm\Desktop\HousePrice/train.csv') #(1459, 80)
+df = pd.DataFrame(data)
+#findNA=df.isna().sum()
+#check = df[''].value_counts()
+
+X=df.filter(['MSSubClass', 'LotArea', 
+              'OverallQual','OverallCond',
+                'YearBuilt', 'MoSold', 
+             'YrSold', 'MasVnrArea', 'BsmtFinSF1',
+             'BsmtFinSF2', 'BsmtUnfSF', 
+             'TotalBsmtSF', '1stFlrSF', '2ndFlrSF',
+             'GrLivArea', 
+            'WoodDeckSF', 'OpenPorchSF', 'EnclosedPorch',
+                   '3SsnPorch', 'ScreenPorch','PoolArea'
+            ])
+
+y=df['SalePrice'] 
+
+# change  Y N to 1 0  'CentralAir'  'PavedDrive'
+# change 0  .5   1  SaleCondition : Partial  Normal  Abnorml 
+# LotFrontage  missing 259 data need to fill in NA with the mean of column
+
+'''
+Create a predition:
+'''
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.30)
+
+# Fitting Random Forest Regression to the dataset
+from sklearn.ensemble import RandomForestRegressor
+regressor = RandomForestRegressor(n_estimators = 10, random_state = 0)
+regressor.fit(X_train.reshape(-1,1), y_train.reshape(-1,1))
+
+y_pred = regressor.predict(X_test.reshape(-1,1))
+print(y_pred)
