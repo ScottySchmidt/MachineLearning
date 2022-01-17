@@ -1,49 +1,141 @@
 '''
-With 79 explanatory variables describing (almost) every aspect of residential homes in Ames, Iowa.
-This competition challenges you to predict the final price of each home.
-
-This will use the following:
-Creative feature engineering 
-Advanced regression techniques like random forest and gradient boosting
-
-The Ames Housing dataset was compiled by Dean De Cock for use in data science education.
-It's an incredible alternative for data scientists looking for a modernized and
-expanded version of the often cited Boston Housing dataset. 
+Real data with 79 explanatory variables describing aspects of residential homes in Ames, Iowa.
+The final price of each home is predicted using:
+1) Realative feature engineering,
+2) Advanced regression techniques (random forest and gradient boosting).
 '''
+import os
+import numpy as np
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 data=pd.read_csv(r'C:\Users\sschm\Desktop\HousePrice/train.csv') #(1459, 80)
-df = pd.DataFrame(data)
-#findNA=df.isna().sum()
-#check = df[''].value_counts()
 
-X=df.filter(['MSSubClass', 'LotArea', 
-              'OverallQual','OverallCond',
-                'YearBuilt', 'MoSold', 
-             'YrSold', 'MasVnrArea', 'BsmtFinSF1',
-             'BsmtFinSF2', 'BsmtUnfSF', 
-             'TotalBsmtSF', '1stFlrSF', '2ndFlrSF',
-             'GrLivArea', 
-            'WoodDeckSF', 'OpenPorchSF', 'EnclosedPorch',
-                   '3SsnPorch', 'ScreenPorch','PoolArea'
-            ])
 
-y=df['SalePrice'] 
+#Sorting columns null values:
+total=data.isnull().sum().sort_values(ascending=False)
+total=total.head(20)
 
-# change  Y N to 1 0  'CentralAir'  'PavedDrive'
-# change 0  .5   1  SaleCondition : Partial  Normal  Abnorml 
-# LotFrontage  missing 259 data need to fill in NA with the mean of column
+cols=['MSSubClass', 'LotArea', 'OverallQual','OverallCond','YearBuilt', 'MoSold', 
+             'YrSold', 'MasVnrArea', 'BsmtFinSF1','BsmtFinSF2', 'BsmtUnfSF','TotalBsmtSF', '1stFlrSF', '2ndFlrSF',
+             'GrLivArea','WoodDeckSF', 'OpenPorchSF', 'EnclosedPorch','3SsnPorch', 'ScreenPorch','PoolArea', 'SalePrice'
+            ]
 
+df = pd.DataFrame(data, columns=cols) 
+df = df[df.isnull().sum(axis=1) <= 5] #remove col with 5 or more missing values
+df = df.dropna(axis=0, how='any', thresh=None, subset=None, inplace=False)
+findNA=df.isna().sum()  #check = df[''].value_counts()
+X=df.drop('SalePrice', axis=1)
+y=df['SalePrice']
+
+#Find Multicollinearity using VIF:
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+def calc_VIF(x):
+    vif= pd.DataFrame()
+    vif['variables']=x.columns
+    vif["VIF"]=[variance_inflation_factor(x.values,i) for i in range(x.shape[1])]
+    return(vif)
+
+
+#Find Multicollinearity using heat map:
+def printHeat():
+    corr = df.corr()
+    #print(corr)
+    highly_corr_features = corr.index[abs(corr["SalePrice"])>0.5]
+    plt.figure(figsize=(10,10))
+    heat = sns.heatmap(df[highly_corr_features].corr(),annot=True,cmap="RdYlGn")
+    top10=corr["SalePrice"].sort_values(ascending=False).head(10)
+    print(heat)
+    print(top10)
+
+def pltFigure():
+    fig = plt.figure(figsize=(12,10))
+    #GarageArea
+    plt.subplot(321)
+    sns.scatterplot(data=train, x='GarageArea', y="SalePrice")
+    
+#printHeat()  #will print heatmap and correlations
+#calc_VIF(df[::-1]) #test for multicollinearity using VIF
+#pltFigure() #plot figures
 '''
-Create a predition:
+Create a predition using random forest
+Splitting the dataset into the Training set and Test set
 '''
 from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.30)
 
-# Fitting Random Forest Regression to the dataset
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.25, random_state = 0)
+
+# Fitting Random Forest Regression to the Training set
 from sklearn.ensemble import RandomForestRegressor
-regressor = RandomForestRegressor(n_estimators = 10, random_state = 0)
-regressor.fit(X_train.reshape(-1,1), y_train.reshape(-1,1))
+import sklearn.metrics as metrics
+from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix
 
-y_pred = regressor.predict(X_test.reshape(-1,1))
-print(y_pred)
+dMAE={}
+for n in range(50, 301, 25):
+    regressor = RandomForestRegressor(n_estimators=n, random_state = 0)
+    regressor.fit(X_train, y_train)
+    #score=clf.score(X_test,y_test)
+    #print("score: ", score)
+
+    # Predicting the Test set results
+    y_pred = regressor.predict(X_test)
+    #y_pred1= regressor.predict(X_test)[:,1]
+
+    #auc = metrics.roc_auc_score(y_test, y_pred)
+    #auc = metrics.roc_auc_score(y_test, y_pred)
+    #print("AUC: ", auc)
+
+    # Evaluating the Algorithm
+    
+    MAE=metrics.mean_absolute_error(y_test, y_pred).round(3)
+    dMAE[n]=MAE
+    #print("n_estimates: ", n)
+    #print('Mean Absolute Error:', MAE)  
+    #print('Mean Squared Error:', metrics.mean_squared_error(y_test, y_pred).round(3))  
+    #print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, y_pred)).round(3))
+
+#sort dictionary by values and find the lowest MAE:
+dMAE = dict(sorted(dMAE.items(), reverse = True)[:5])
+print(dMAE) # lowest MAE values by n 
+
+'''
+{300: 18644.808, 275: 18651.716, 250: 18632.242, 225: 18586.887, 200: 18632.043}
+
+TOP CORRELATIONS to SalesPrice:
+OverallQual    0.789997
+GrLivArea      0.710080
+TotalBsmtSF    0.612971
+1stFlrSF       0.606849
+YearBuilt      0.522896
+MasVnrArea     0.477493
+BsmtFinSF1     0.383977
+WoodDeckSF     0.324650
+2ndFlrSF       0.322710
+
+
+n_estimates:  50
+Mean Absolute Error: 19072.341
+Mean Squared Error: 873847863.072
+Root Mean Squared Error: 29560.918
+
+n_estimates:  100
+Mean Absolute Error: 18723.521
+Mean Squared Error: 848083216.583
+Root Mean Squared Error: 29121.868
+
+n_estimates:  150
+Mean Absolute Error: 18570.264
+Mean Squared Error: 839489900.342
+Root Mean Squared Error: 28973.952
+
+n_estimates:  200
+Mean Absolute Error: 18632.043
+Mean Squared Error: 836170652.963
+Root Mean Squared Error: 28916.616
+
+n_estimates:  250
+Mean Absolute Error: 18632.242
+Mean Squared Error: 842502190.106
+Root Mean Squared Error: 29025.888
+'''
