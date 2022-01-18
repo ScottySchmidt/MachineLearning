@@ -10,12 +10,9 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+print("start")
+
 data=pd.read_csv(r'C:\Users\sschm\Desktop\HousePrice/train.csv') #(1459, 80)
-
-
-#Sorting columns null values:
-total=data.isnull().sum().sort_values(ascending=False)
-total=total.head(20)
 
 cols=['MSSubClass', 'LotArea', 'OverallQual','OverallCond','YearBuilt', 'MoSold', 
              'YrSold', 'MasVnrArea', 'BsmtFinSF1','BsmtFinSF2', 'BsmtUnfSF','TotalBsmtSF', '1stFlrSF', '2ndFlrSF',
@@ -25,7 +22,6 @@ cols=['MSSubClass', 'LotArea', 'OverallQual','OverallCond','YearBuilt', 'MoSold'
 df = pd.DataFrame(data, columns=cols) 
 df = df[df.isnull().sum(axis=1) <= 5] #remove col with 5 or more missing values
 df = df.dropna(axis=0, how='any', thresh=None, subset=None, inplace=False)
-findNA=df.isna().sum()  #check = df[''].value_counts()
 X=df.drop('SalePrice', axis=1)
 y=df['SalePrice']
 
@@ -36,7 +32,6 @@ def calc_VIF(x):
     vif['variables']=x.columns
     vif["VIF"]=[variance_inflation_factor(x.values,i) for i in range(x.shape[1])]
     return(vif)
-
 
 #Find Multicollinearity using heat map:
 def printHeat():
@@ -54,7 +49,12 @@ def pltFigure():
     #GarageArea
     plt.subplot(321)
     sns.scatterplot(data=train, x='GarageArea', y="SalePrice")
-    
+
+#Sorting columns null values:
+def findNA():
+    findNA=df.isna().sum()  #check = df[''].value_counts()
+    total=data.isnull().sum().sort_values(ascending=False)
+    total=total.head(20)
 #printHeat()  #will print heatmap and correlations
 #calc_VIF(df[::-1]) #test for multicollinearity using VIF
 #pltFigure() #plot figures
@@ -72,7 +72,7 @@ import sklearn.metrics as metrics
 from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix
 
 dMAE={}
-for n in range(50, 301, 25):
+for n in range(250, 1401, 250):
     regressor = RandomForestRegressor(n_estimators=n, random_state = 0)
     regressor.fit(X_train, y_train)
     #score=clf.score(X_test,y_test)
@@ -87,7 +87,6 @@ for n in range(50, 301, 25):
     #print("AUC: ", auc)
 
     # Evaluating the Algorithm
-    
     MAE=metrics.mean_absolute_error(y_test, y_pred).round(3)
     dMAE[n]=MAE
     #print("n_estimates: ", n)
@@ -96,11 +95,17 @@ for n in range(50, 301, 25):
     #print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, y_pred)).round(3))
 
 #sort dictionary by values and find the lowest MAE:
-dMAE = dict(sorted(dMAE.items(), reverse = True)[:5])
-print(dMAE) # lowest MAE values by n 
+#dMAE=sorted(((v, k) for k, v in dMAE.items()), reverse=True)[:5]
+print(dMAE)
+dMAE=sorted(((v, k) for k, v in dMAE.items()), reverse=True)
+print(dMAE)
+print("done")
 
 '''
-{300: 18644.808, 275: 18651.716, 250: 18632.242, 225: 18586.887, 200: 18632.043}
+start
+{250: 18632.242, 500: 18636.621, 750: 18680.353, 1000: 18696.357, 1250: 18674.225}
+[(18696.357, 1000), (18680.353, 750), (18674.225, 1250), (18636.621, 500), (18632.242, 250)]
+done
 
 TOP CORRELATIONS to SalesPrice:
 OverallQual    0.789997
