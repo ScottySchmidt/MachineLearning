@@ -1,4 +1,7 @@
 '''
+An updated verision that contains visual graphs will be located here:  
+https://www.kaggle.com/scottfredschmidt/predict-housing-prices/edit
+
 Real data with 79 explanatory variables describing aspects of residential homes in Ames, Iowa.
 The final price of each home is predicted using:
 1) Realative feature engineering,
