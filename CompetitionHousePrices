@@ -61,6 +61,62 @@ def findNA():
 #printHeat()  #will print heatmap and correlations
 #calc_VIF(df[::-1]) #test for multicollinearity using VIF
 #pltFigure() #plot figures
+
+
+#Split the data set into training data and test data:
+from sklearn.model_selection import train_test_split, cross_validate
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from statistics import mean
+​
+x_train_data, x_test_data, y_train_data, y_test_data = train_test_split(X, y, test_size = 0.3, random_state=42)
+​
+lrModel = LinearRegression()
+lrModel.fit(x_train_data, y_train_data)
+#print(model.coef_)
+#print(model.intercept_)
+​
+#Generate Predictions:
+predictions = lrModel.predict(x_test_data)
+​
+# plt.scatter(y_test, predictions)
+plt.hist(y_test_data - predictions)
+​
+#Performance measurement:
+import sklearn.metrics as metrics
+from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix, r2_score
+#print(classification_report(y_test_data, predictions))
+#print(confusion_matrix(y_test_data, predictions))
+​
+metrics.mean_absolute_error(y_test_data, predictions)
+metrics.mean_squared_error(y_test_data, predictions)
+np.sqrt(metrics.mean_squared_error(y_test_data, predictions))
+​
+#use model to predict probability that given y value is 1:
+y_pred_proba = lrModel.predict(x_test_data)
+​
+#calculate AUC
+#auc = round( metrics.roc_auc_score(y_test_data, y_pred_proba, multi_class='ovr'), 4 ) 
+#print(auc, " AUC ", )
+​
+r2 = r2_score(y_test_data, y_pred_proba).round(4) 
+print("r2 score: ", r2)
+​
+#Cross Validation Test Results:
+lr_score = lrModel.score(X_test, y_test).round(4)  # train test 
+print("Accuracy: ", lr_score)
+lr_cv = cross_validate(lrModel, X, y, cv = 5, scoring= 'r2')
+#print("Cross-validation results: ", lr_cv)
+#print("R2 Cross-validation: ", np.array(list(lr_cv.values())).mean().round(4) ) 
+​
+#RIDGE REGRESSION:
+ridge = Ridge(alpha = 1)  # sets alpha to a default value as baseline  
+ridge.fit(X_train, y_train)
+​
+ridge_cv = cross_validate(ridge, X, y, cv = 5, scoring = 'r2')
+print ("Cross-validation results: ", ridge_cv)
+print ("Ridge Regression R2: ", ridge_cv.mean())
+
+
 '''
 Create a predition using random forest
 Splitting the dataset into the Training set and Test set
