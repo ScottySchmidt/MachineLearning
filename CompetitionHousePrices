@@ -116,6 +116,12 @@ ridge_cv = cross_validate(ridge, X, y, cv = 5, scoring = 'r2')
 print ("Cross-validation results: ", ridge_cv)
 print ("Ridge Regression R2: ", ridge_cv.mean())
 
+#LASSO REGRESSION:
+lasso = Lasso(alpha = .1, normalize=True)  # sets alpha to almost zero as baseline
+lasso.fit(x_train_data, y_train_data)
+lasso_cv = cross_validate(lasso, X, y, cv = 5, scoring = 'r2')
+lasso_cvMean=lasso_cv['test_score'].mean().round(4)
+#print ("Lasso Regression R2: ", lasso_cvMean)
 
 '''
 Create a predition using random forest
