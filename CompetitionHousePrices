@@ -127,47 +127,34 @@ lasso_cvMean=lasso_cv['test_score'].mean().round(4)
 Create a predition using random forest
 Splitting the dataset into the Training set and Test set
 '''
-from sklearn.model_selection import train_test_split
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.25, random_state = 0)
-
-# Fitting Random Forest Regression to the Training set
+#RANDOM FOREST MODEL:
 from sklearn.ensemble import RandomForestRegressor
-import sklearn.metrics as metrics
-from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix
 
-dMAE={}
-for n in range(250, 1401, 250):
-    regressor = RandomForestRegressor(n_estimators=n, random_state = 0)
-    regressor.fit(X_train, y_train)
-    #score=clf.score(X_test,y_test)
-    #print("score: ", score)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.30, random_state = 0)
 
-    # Predicting the Test set results
-    y_pred = regressor.predict(X_test)
-    #y_pred1= regressor.predict(X_test)[:,1]
+#TEST TO SEE WHAT n_estimators value produces the least amount of MAE error:
+dMAE={} #dictionary of n_estimators as key and MAE as value:
+def checkMAE():
+    for n in range(100, 1401, 100):
+        regressor = RandomForestRegressor(n_estimators=n, random_state = 0)
+        regressor.fit(X_train, y_train)
+        y_pred = regressor.predict(X_test)
+        MAE=metrics.mean_absolute_error(y_test, y_pred).round(2)
+        dMAE[n]=MAE
+        #print("n_estimates: ", n,  '  Mean Absolute Error:', MAE)
 
-    #auc = metrics.roc_auc_score(y_test, y_pred)
-    #auc = metrics.roc_auc_score(y_test, y_pred)
-    #print("AUC: ", auc)
+    dMAE=sorted(((v, k) for k, v in dMAE.items()), reverse=False)
+    #print(dMAE) #[(18573.45, 400), (18632.04, 200), (18636.62, 500), (18644.81, 300), (18651.96, 600),
 
-    # Evaluating the Algorithm
-    MAE=metrics.mean_absolute_error(y_test, y_pred).round(3)
-    dMAE[n]=MAE
-    #print("n_estimates: ", n)
-    #print('Mean Absolute Error:', MAE)  
-    #print('Mean Squared Error:', metrics.mean_squared_error(y_test, y_pred).round(3))  
-    #print('Root Mean Squared Error:', np.sqrt(metrics.mean_squared_error(y_test, y_pred)).round(3))
-
-#sort dictionary by values and find the lowest MAE:
-#dMAE=sorted(((v, k) for k, v in dMAE.items()), reverse=True)[:5]
-print(dMAE)
-dMAE=sorted(((v, k) for k, v in dMAE.items()), reverse=True)
-print(dMAE)
-print("done")
+#Final R2 value using 400 as n_estimators
+num=400 #lowest MAE in sorted dic
+regressor = RandomForestRegressor(n_estimators=num, random_state = 0)
+regressor.fit(X_train, y_train)
+y_pred = regressor.predict(X_test)
+rf_r2 = r2_score(y_test, y_pred).round(4) 
+print("Random forest r2: ", rf_r2) #Random forest r2:  0.8921
 
 '''
-start
 {250: 18632.242, 500: 18636.621, 750: 18680.353, 1000: 18696.357, 1250: 18674.225}
 [(18696.357, 1000), (18680.353, 750), (18674.225, 1250), (18636.621, 500), (18632.242, 250)]
 done
@@ -182,30 +169,4 @@ MasVnrArea     0.477493
 BsmtFinSF1     0.383977
 WoodDeckSF     0.324650
 2ndFlrSF       0.322710
-
-
-n_estimates:  50
-Mean Absolute Error: 19072.341
-Mean Squared Error: 873847863.072
-Root Mean Squared Error: 29560.918
-
-n_estimates:  100
-Mean Absolute Error: 18723.521
-Mean Squared Error: 848083216.583
-Root Mean Squared Error: 29121.868
-
-n_estimates:  150
-Mean Absolute Error: 18570.264
-Mean Squared Error: 839489900.342
-Root Mean Squared Error: 28973.952
-
-n_estimates:  200
-Mean Absolute Error: 18632.043
-Mean Squared Error: 836170652.963
-Root Mean Squared Error: 28916.616
-
-n_estimates:  250
-Mean Absolute Error: 18632.242
-Mean Squared Error: 842502190.106
-Root Mean Squared Error: 29025.888
 '''
