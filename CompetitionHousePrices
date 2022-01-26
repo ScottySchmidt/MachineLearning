@@ -1,10 +1,16 @@
 '''
 https://www.kaggle.com/scottfredschmidt/predicthouseprices
+# Predict House Prices
+Data has 79 explanatory variables describing aspects of residential homes in Ames, Iowa which can be downloaded [here](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/). Prediction modeling resulted in the following:
+* Gradient booster classification had the highest accuracy of 0.899 with a deviation of 0.031. 
+* Random forest also had a very high r-squared value at  0.8905. 
+* Linear regression produced only a 0.7979 result and 0.77850 for both lasso and ridge.
+* Decision tree r-squared is  0.6246.
+------------------------------
+First, data must be cleaned such as checking for missing values. 
+An initial DataFrame with numeric values is analyzed. Later on, some catergorical values will be assigned a numeric value to be futher analyzed. 
+Some columns will not provide beneficial value. A column with too many missing values is removed.
 
-Real data with 79 explanatory variables describing aspects of residential homes in Ames, Iowa.
-The final price of each home is predicted using:
-1) Realative feature engineering,
-2) Advanced regression techniques (random forest and gradient boosting).
 '''
 import os
 import numpy as np
@@ -122,10 +128,6 @@ lasso_cv = cross_validate(lasso, X, y, cv = 5, scoring = 'r2')
 lasso_cvMean=lasso_cv['test_score'].mean().round(4)
 #print ("Lasso Regression R2: ", lasso_cvMean)
 
-'''
-Create a predition using random forest
-Splitting the dataset into the Training set and Test set
-'''
 #RANDOM FOREST MODEL:
 from sklearn.ensemble import RandomForestRegressor
 
@@ -202,7 +204,19 @@ fig.tight_layout()
 plt.show()
 
 
+#DECISION TREE
+from sklearn.tree import DecisionTreeClassifier
 
+tree = DecisionTreeClassifier()
+tree.fit(X_train, y_train)
+y_pred = tree.predict(X_test)
+
+#print(classification_report(y_test, y_pred))
+#print(confusion_matrix(y_test, y_pred))
+
+y_pred = tree.predict(X_test)
+tree_r2 = r2_score(y_test, y_pred).round(4)
+print("Decision tree r2: ", tree_r2)
 
 '''
 {250: 18632.242, 500: 18636.621, 750: 18680.353, 1000: 18696.357, 1250: 18674.225}
