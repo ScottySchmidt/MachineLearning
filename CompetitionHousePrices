@@ -1,39 +1,51 @@
-'''
-https://www.kaggle.com/scottfredschmidt/predicthouseprices
-# Predict House Prices
-Data has 79 explanatory variables describing aspects of residential homes in Ames, Iowa which can be downloaded [here](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/). Prediction modeling resulted in the following:
-* Gradient booster classification had the highest accuracy of 0.899 with a deviation of 0.031. 
-* Random forest also had a very high r-squared value at  0.8905. 
-* Linear regression produced only a 0.7979 result and 0.77850 for both lasso and ridge.
-* Decision tree r-squared is  0.6246.
-------------------------------
-First, data must be cleaned such as checking for missing values. 
-An initial DataFrame with numeric values is analyzed. Later on, some catergorical values will be assigned a numeric value to be futher analyzed. 
-Some columns will not provide beneficial value. A column with too many missing values is removed.
+# %% [markdown]
+# # Predict House Prices
+# Data has 79 explanatory variables describing aspects of residential homes in Ames, Iowa which can be downloaded [here](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/). Prediction modeling resulted in the following starting with the best:
+# * Gradient booster classification had the highest accuracy of 0.899 with a deviation of 0.031. 
+# * Random forest also had a very high r-squared value at  0.8905. 
+# * Linear regression produced only a 0.8002 result and 0.77850 for both lasso and ridge.
+# * Decision tree r-squared is  0.6948.
+# 
+# -----------------
+# First, data must be cleaned such as checking for missing values. An initial DataFrame with numeric values is analyzed. Later on, some catergorical values will be assigned a numeric value to be futher analyzed. Some columns will not provide beneficial value. A column with too many missing values is removed.
 
-'''
+# %% [code] {"execution":{"iopub.status.busy":"2022-01-28T15:32:15.905663Z","iopub.execute_input":"2022-01-28T15:32:15.905956Z","iopub.status.idle":"2022-01-28T15:32:15.996272Z","shell.execute_reply.started":"2022-01-28T15:32:15.905928Z","shell.execute_reply":"2022-01-28T15:32:15.995364Z"}}
 import os
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-print("start")
+data=pd.read_csv(r'/kaggle/input/house-prices-advanced-regression-techniques/train.csv')#(1459, 80) 
+test=pd.read_csv("/kaggle/input/house-prices-advanced-regression-techniques/test.csv")
 
-data=pd.read_csv(r'C:\Users\sschm\Desktop\HousePrice/train.csv') #(1459, 80)
+# These are the simple numeric columns to analyze for now:
+numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+df = df.select_dtypes(include=numerics)
+df['TotalSF'] = df['TotalBsmtSF'] + df['1stFlrSF'] + df['2ndFlrSF'].drop(columns=['TotalBsmtSF', '1stFlrSF', '2ndFlrSF'])
+df = df[df.isnull().sum(axis=1) <= 10] #remove col with 5 or more missing values
 
-cols=['MSSubClass', 'LotArea', 'OverallQual','OverallCond','YearBuilt', 'MoSold', 
-             'YrSold', 'MasVnrArea', 'BsmtFinSF1','BsmtFinSF2', 'BsmtUnfSF','TotalBsmtSF', '1stFlrSF', '2ndFlrSF',
-             'GrLivArea','WoodDeckSF', 'OpenPorchSF', 'EnclosedPorch','3SsnPorch', 'ScreenPorch','PoolArea', 'SalePrice'
-            ]
+#df = df.dropna(axis=0, how='any', thresh=None, subset=None, inplace=False) #dropna method
+df = df.fillna(df.mean())
+#df["LotFrontage"] = df.groupby("Neighborhood")["LotFrontage"].transform(lambda x: x.fillna(x.median()))
 
-df = pd.DataFrame(data, columns=cols) 
-df = df[df.isnull().sum(axis=1) <= 5] #remove col with 5 or more missing values
-df = df.dropna(axis=0, how='any', thresh=None, subset=None, inplace=False)
 X=df.drop('SalePrice', axis=1)
 y=df['SalePrice']
 
-#Find Multicollinearity using VIF:
+#search for columns with missing values:
+def findNA():
+    findNA=df.isna().sum() 
+    total=data.isnull().sum().sort_values(ascending=False)
+    total=total.head(5)
+    print("Missing values per column: ")
+    print(total)
+findNA() 
+
+# %% [markdown]
+# # Correlations and Multicollinearity
+# Using a visual heatmap can display all correlations between features and detect multicollinearity. No major multicollinearity was detected other than first floor and basement floor with a .82 correlation. These variables could theoretically be combined into total square feet of the entire house. Variance inflation factor can also be calculated by calling the Python function by removing the comment on bottom.
+
+# %% [code] {"execution":{"iopub.status.busy":"2022-01-28T15:08:30.811347Z","iopub.execute_input":"2022-01-28T15:08:30.811617Z","iopub.status.idle":"2022-01-28T15:08:31.717787Z","shell.execute_reply.started":"2022-01-28T15:08:30.811584Z","shell.execute_reply":"2022-01-28T15:08:31.716224Z"}}
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 def calc_VIF(x):
     vif= pd.DataFrame()
@@ -50,84 +62,115 @@ def printHeat():
     heat = sns.heatmap(df[highly_corr_features].corr(),annot=True,cmap="RdYlGn")
     top10=corr["SalePrice"].sort_values(ascending=False).head(10)
     print(heat)
-    print(top10)
+    #print(top10) # top ten correlations
 
-def pltFigure():
-    fig = plt.figure(figsize=(12,10))
-    #GarageArea
-    plt.subplot(321)
-    sns.scatterplot(data=train, x='GarageArea', y="SalePrice")
+#print correlation between features
+def printHighCorr(df, features, threshold=0.8):
+    print("Highly correlated variables above: ", threshold)
+    corr_df = df[features].corr() # get correlations
+    correlated_features = np.where(np.abs(corr_df) > threshold) # select ones above the abs threshold
+    correlated_features = [(corr_df.iloc[x,y], x, y) for x, y in zip(*correlated_features) if x != y and x < y] # avoid duplication
+    s_corr_list = sorted(correlated_features, key=lambda x: -abs(x[0])) # sort by correlation value
+    correlation_df={}
+    if s_corr_list == []:
+        print("There are no highly correlated features with correlation above", threshold)
+    else:
+        for v, i, j in s_corr_list:
+            correlation_df[corr_df.index[i] +" and "+ corr_df.columns[j]]= v
+        correlation_df=pd.DataFrame(correlation_df,index=['Correlation'])
+    return  correlation_df.T.sort_values(by='Correlation',ascending=False)
 
-#Sorting columns null values:
-def findNA():
-    findNA=df.isna().sum()  #check = df[''].value_counts()
-    total=data.isnull().sum().sort_values(ascending=False)
-    total=total.head(20)
-#printHeat()  #will print heatmap and correlations
+#Turn three functions on or off below:
+printHeat() 
+printHighCorr(data,data.columns).style.set_properties(**{'background-color': 'black','color': 'white'})
+
 #calc_VIF(df[::-1]) #test for multicollinearity using VIF
-#pltFigure() #plot figures
 
 
-#Split the data set into training data and test data:
+# %% [markdown]
+# #  Scatterplot Data
+# I chose to plot the most important features that were found with the highest correlation to house sales price which were the following: 'OverallQual','TotalBsmtSF','MSSubClass', 'LotArea'.
+# 
+
+# %% [code] {"execution":{"iopub.status.busy":"2022-01-28T15:32:36.034928Z","iopub.execute_input":"2022-01-28T15:32:36.035465Z","iopub.status.idle":"2022-01-28T15:32:36.822065Z","shell.execute_reply.started":"2022-01-28T15:32:36.035429Z","shell.execute_reply":"2022-01-28T15:32:36.821221Z"}}
+def pltFigure():
+    names=['OverallQual','TotalSF','MSSubClass', 'LotArea', ]
+    for name in names:
+        fig = plt.figure(figsize=(12,10))
+        plt.subplot(321)
+        sns.scatterplot(data=df, x=name, y="SalePrice")
+        plt.show()
+pltFigure()
+
+# %% [markdown]
+# # Linear Regression
+# R-squared and accuracy produced a 0.7979 performance result:
+# * The linear regression cross validated is 0.7785.
+# * Both ridge and lasso regression r-squared result is 0.7785.
+
+# %% [code] {"execution":{"iopub.status.busy":"2022-01-28T15:08:32.537659Z","iopub.execute_input":"2022-01-28T15:08:32.538049Z","iopub.status.idle":"2022-01-28T15:08:33.477721Z","shell.execute_reply.started":"2022-01-28T15:08:32.537986Z","shell.execute_reply":"2022-01-28T15:08:33.476761Z"}}
+#LINEAR REGRESSION MODEL:
 from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
 from statistics import mean
-​
+import warnings
+warnings.filterwarnings('ignore')
+
+#Split the data set into training data and test data:
 x_train_data, x_test_data, y_train_data, y_test_data = train_test_split(X, y, test_size = 0.3, random_state=42)
-​
+
 lrModel = LinearRegression()
 lrModel.fit(x_train_data, y_train_data)
 #print(model.coef_)
 #print(model.intercept_)
-​
+
 #Generate Predictions:
 predictions = lrModel.predict(x_test_data)
-​
+
 # plt.scatter(y_test, predictions)
 plt.hist(y_test_data - predictions)
-​
+
 #Performance measurement:
 import sklearn.metrics as metrics
 from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix, r2_score
 #print(classification_report(y_test_data, predictions))
 #print(confusion_matrix(y_test_data, predictions))
-​
+
 metrics.mean_absolute_error(y_test_data, predictions)
 metrics.mean_squared_error(y_test_data, predictions)
 np.sqrt(metrics.mean_squared_error(y_test_data, predictions))
-​
+
 #use model to predict probability that given y value is 1:
 y_pred_proba = lrModel.predict(x_test_data)
-​
-#calculate AUC
-#auc = round( metrics.roc_auc_score(y_test_data, y_pred_proba, multi_class='ovr'), 4 ) 
-#print(auc, " AUC ", )
-​
 r2 = r2_score(y_test_data, y_pred_proba).round(4) 
-print("r2 score: ", r2)
-​
-#Cross Validation Test Results:
-lr_score = lrModel.score(X_test, y_test).round(4)  # train test 
+print("Linear regression r2 score: ", r2)
+
+#CROSS VALIDATE TEST RESULTS:
+lr_score = lrModel.score(x_test_data, y_test_data).round(4)  # train test 
 print("Accuracy: ", lr_score)
 lr_cv = cross_validate(lrModel, X, y, cv = 5, scoring= 'r2')
-#print("Cross-validation results: ", lr_cv)
-#print("R2 Cross-validation: ", np.array(list(lr_cv.values())).mean().round(4) ) 
-​
+lr_cvMean=lr_cv['test_score'].mean().round(4)
+print(lr_cvMean, " linear regression cross validate mean")
+
 #RIDGE REGRESSION:
-ridge = Ridge(alpha = 1)  # sets alpha to a default value as baseline  
-ridge.fit(X_train, y_train)
-​
+ridge = Ridge(alpha = .5)  # sets alpha to a default value as baseline  
+ridge.fit(x_train_data, y_train_data)
 ridge_cv = cross_validate(ridge, X, y, cv = 5, scoring = 'r2')
-print ("Cross-validation results: ", ridge_cv)
-print ("Ridge Regression R2: ", ridge_cv.mean())
+ridge_cvMean=ridge_cv['test_score'].mean().round(4)
+print ("Ridge Regression R2: ", ridge_cvMean)
 
 #LASSO REGRESSION:
 lasso = Lasso(alpha = .1, normalize=True)  # sets alpha to almost zero as baseline
 lasso.fit(x_train_data, y_train_data)
 lasso_cv = cross_validate(lasso, X, y, cv = 5, scoring = 'r2')
 lasso_cvMean=lasso_cv['test_score'].mean().round(4)
-#print ("Lasso Regression R2: ", lasso_cvMean)
+print ("Lasso Regression R2: ", lasso_cvMean)
 
+# %% [markdown]
+# # Random Forest Prediction:
+# R-squared for random forest is 0.8905. The results used an n_estimator of 400 which provides the lowest mean absolute error (MAE). 
+
+# %% [code] {"execution":{"iopub.status.busy":"2022-01-28T15:32:43.756909Z","iopub.execute_input":"2022-01-28T15:32:43.757762Z","iopub.status.idle":"2022-01-28T15:32:47.639800Z","shell.execute_reply.started":"2022-01-28T15:32:43.757720Z","shell.execute_reply":"2022-01-28T15:32:47.638773Z"}}
 #RANDOM FOREST MODEL:
 from sklearn.ensemble import RandomForestRegressor
 
@@ -137,9 +180,9 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.30, rand
 dMAE={} #dictionary of n_estimators as key and MAE as value:
 def checkMAE():
     for n in range(100, 1401, 100):
-        regressor = RandomForestRegressor(n_estimators=n, random_state = 0)
-        regressor.fit(X_train, y_train)
-        y_pred = regressor.predict(X_test)
+        forest = RandomForestRegressor(n_estimators=n, random_state = 0)
+        forest.fit(X_train, y_train)
+        y_pred = forest.predict(X_test)
         MAE=metrics.mean_absolute_error(y_test, y_pred).round(2)
         dMAE[n]=MAE
         #print("n_estimates: ", n,  '  Mean Absolute Error:', MAE)
@@ -147,14 +190,38 @@ def checkMAE():
     dMAE=sorted(((v, k) for k, v in dMAE.items()), reverse=False)
     #print(dMAE) #[(18573.45, 400), (18632.04, 200), (18636.62, 500), (18644.81, 300), (18651.96, 600),
 
-#Final R2 value using 400 as n_estimators
-num=400 #lowest MAE in sorted dic
-regressor = RandomForestRegressor(n_estimators=num, random_state = 0)
-regressor.fit(X_train, y_train)
-y_pred = regressor.predict(X_test)
+num=400 #lowest n_estimators in MAE in sorted dic
+forest = RandomForestRegressor(n_estimators=num, random_state = 0)
+forest.fit(X_train, y_train)
+y_pred = forest.predict(X_test)
 rf_r2 = r2_score(y_test, y_pred).round(4) 
-print("Random forest r2: ", rf_r2) #Random forest r2:  0.8921
+print("Random forest r2: ", rf_r2) #Random forest r2:  0.8905
 
+# %% [markdown]
+# # Decision Tree
+# The decision tree r-sqaured is 0.6948 which is much lower than the other predictive models. More tests will need to be run to verify if the data has been underfit. 
+
+# %% [code] {"execution":{"iopub.status.busy":"2022-01-28T15:08:37.527038Z","iopub.execute_input":"2022-01-28T15:08:37.527541Z","iopub.status.idle":"2022-01-28T15:08:37.709302Z","shell.execute_reply.started":"2022-01-28T15:08:37.527499Z","shell.execute_reply":"2022-01-28T15:08:37.708303Z"}}
+#DECISION TREE
+from sklearn.tree import DecisionTreeClassifier
+
+tree = DecisionTreeClassifier()
+tree.fit(X_train, y_train)
+y_pred = tree.predict(X_test)
+
+#print(classification_report(y_test, y_pred))
+#print(confusion_matrix(y_test, y_pred))
+
+y_pred = tree.predict(X_test)
+tree_r2 = r2_score(y_test, y_pred).round(4)
+print("Decision tree r2: ", tree_r2)
+
+# %% [markdown]
+# # Gradient Boost regression and Feature Importance
+# 
+# Gradient boosting regression r-squared is 0.5721, and the mean squared error (MSE) on test set: 0.1063.
+
+# %% [code] {"execution":{"iopub.status.busy":"2022-01-28T15:33:43.663132Z","iopub.execute_input":"2022-01-28T15:33:43.663431Z","iopub.status.idle":"2022-01-28T15:33:50.435948Z","shell.execute_reply.started":"2022-01-28T15:33:43.663402Z","shell.execute_reply":"2022-01-28T15:33:50.435057Z"}}
 #GRADIENT BOOST REGRESSION:
 import matplotlib.pyplot as plt
 import numpy as np
@@ -162,24 +229,25 @@ from sklearn import datasets, ensemble
 from sklearn.inspection import permutation_importance
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingClassifier,GradientBoostingRegressor
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.1, random_state=13
-)
+X_train, X_test, y_train, y_test = train_test_split( X, y, test_size=0.1, random_state=13)
 
 params = {
-    "n_estimators": 500,
-    "max_depth": 4,
-    "min_samples_split": 5,
-    "learning_rate": 0.01,
+ "n_estimators": 500, "max_depth": 4, "min_samples_split": 5, "learning_rate": 0.01,
 }
 
 reg = ensemble.GradientBoostingRegressor(**params)
 reg.fit(X_train, y_train)
 
+y_pred = reg.predict(X_test)
+gbr_r2 = r2_score(y_test, y_pred).round(4) 
+print("Gradient boosting regression r2: ", gbr_r2) 
+
 mse = mean_squared_error(y_test, reg.predict(X_test))
 print("The mean squared error (MSE) on test set: {:.4f}".format(mse))
 
+#FEATURE IMPORTANCE:
 feature_importance = reg.feature_importances_
 sorted_idx = np.argsort(feature_importance)
 pos = np.arange(sorted_idx.shape[0]) + 0.5
@@ -188,6 +256,7 @@ plt.subplot(1, 2, 1)
 plt.barh(pos, feature_importance[sorted_idx], align="center")
 plt.yticks(pos, np.array(cols)[sorted_idx])
 plt.title("Feature Importance (MDI)")
+cols=df.columns
 
 result = permutation_importance(
     reg, X_test, y_test, n_repeats=10, random_state=42, n_jobs=2
@@ -203,34 +272,52 @@ plt.title("Permutation Importance (test set)")
 fig.tight_layout()
 plt.show()
 
+# %% [markdown]
+# # Final House Price Pediction
 
-#DECISION TREE
-from sklearn.tree import DecisionTreeClassifier
+# %% [code] {"execution":{"iopub.status.busy":"2022-01-28T15:08:44.494662Z","iopub.execute_input":"2022-01-28T15:08:44.494912Z","iopub.status.idle":"2022-01-28T15:08:50.608663Z","shell.execute_reply.started":"2022-01-28T15:08:44.494882Z","shell.execute_reply":"2022-01-28T15:08:50.607674Z"}}
+from sklearn import preprocessing
+from sklearn.ensemble import RandomForestRegressor
 
-tree = DecisionTreeClassifier()
-tree.fit(X_train, y_train)
-y_pred = tree.predict(X_test)
+#X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.30, random_state = 0)
 
-#print(classification_report(y_test, y_pred))
-#print(confusion_matrix(y_test, y_pred))
+forest = RandomForestRegressor(n_estimators=500, random_state = 0)
+forest.fit(X_train, y_train)
+preds = forest.predict(X_test)
 
-y_pred = tree.predict(X_test)
-tree_r2 = r2_score(y_test, y_pred).round(4)
-print("Decision tree r2: ", tree_r2)
+#rf_r2 = r2_score(y_test, y_pred).round(4) 
+#print("Random forest r2: ", rf_r2) #Random forest r2:  0.8905
 
-'''
-{250: 18632.242, 500: 18636.621, 750: 18680.353, 1000: 18696.357, 1250: 18674.225}
-[(18696.357, 1000), (18680.353, 750), (18674.225, 1250), (18636.621, 500), (18632.242, 250)]
-done
+sale_price_scaler = preprocessing.MinMaxScaler()
+targets = df['SalePrice'].values.reshape(-1, 1)
+target_scaled = sale_price_scaler.fit_transform(targets)
 
-TOP CORRELATIONS to SalesPrice:
-OverallQual    0.789997
-GrLivArea      0.710080
-TotalBsmtSF    0.612971
-1stFlrSF       0.606849
-YearBuilt      0.522896
-MasVnrArea     0.477493
-BsmtFinSF1     0.383977
-WoodDeckSF     0.324650
-2ndFlrSF       0.322710
-'''
+ids = test['Id']#.values
+#print(ids)
+preds = sale_price_scaler.inverse_transform(preds.reshape(-1, 1)).squeeze(1)
+preds = np.nan_to_num(preds)#.values
+
+out_df = pd.DataFrame({"Id": ids, "SalePrice": preds})
+out_df.head()
+
+# %% [code] {"execution":{"iopub.status.busy":"2022-01-28T15:08:50.609578Z","iopub.status.idle":"2022-01-28T15:08:50.610508Z","shell.execute_reply.started":"2022-01-28T15:08:50.610269Z","shell.execute_reply":"2022-01-28T15:08:50.610297Z"}}
+# https://www.kaggle.com/ryanholbrook/feature-engineering-for-house-prices
+X_train, X_test = create_features(df_train, df_test)
+y_train = df_train.loc[:, "SalePrice"]
+
+xgb = XGBRegressor(**xgb_params)
+# XGB minimizes MSE, but competition loss is RMSLE
+# So, we need to log-transform y to train and exp-transform the predictions
+xgb.fit(X_train, np.log(y))
+predictions = np.exp(xgb.predict(X_test))
+
+output = pd.DataFrame({'Id': X_test.index, 'SalePrice': predictions})
+output.to_csv('my_submission.csv', index=False)
+output.head(5)
+print("Your submission was successfully saved!")
+
+# %% [markdown]
+# Helpful Resources:
+# * https://www.kaggle.com/niekvanderzwaag/housing-price-prediction-regression
+# * https://www.kaggle.com/ryanholbrook/feature-engineering-for-house-prices
+# * https://machinelearningmastery.com/stacking-ensemble-machine-learning-with-python/
