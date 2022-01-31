@@ -288,31 +288,6 @@ plt.show()
 # %% [markdown]
 # # Final House Price Pediction
 
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2022-01-31T01:21:40.497535Z","iopub.execute_input":"2022-01-31T01:21:40.497851Z","iopub.status.idle":"2022-01-31T01:21:48.753785Z","shell.execute_reply.started":"2022-01-31T01:21:40.497814Z","shell.execute_reply":"2022-01-31T01:21:48.752682Z"}}
-#Predict the house price for all 1459 houses:
-from sklearn import preprocessing
-from sklearn.ensemble import RandomForestRegressor
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=13)
-
-forest = RandomForestRegressor(n_estimators=500, random_state = 0)
-forest.fit(X_train, y_train)
-preds = forest.predict(X_test)
-
-sale_price_scaler = preprocessing.MinMaxScaler()
-targets = df['SalePrice'].values.reshape(-1, 1)
-target_scaled = sale_price_scaler.fit_transform(targets)
-
-ids = test['Id']#.values  # 1459 count
-
-preds = sale_price_scaler.inverse_transform(preds.reshape(-1, 1)).squeeze(1)
-preds = np.nan_to_num(preds)
-
-out_df = pd.DataFrame({"Id": ids, "SalePrice": preds})
-out_df.head() #array length 146 does not match index length 1459
-
-# %% [code] {"jupyter":{"outputs_hidden":false},"execution":{"iopub.status.busy":"2022-01-31T02:12:35.144455Z","iopub.execute_input":"2022-01-31T02:12:35.144762Z","iopub.status.idle":"2022-01-31T02:12:35.347436Z","shell.execute_reply.started":"2022-01-31T02:12:35.144725Z","shell.execute_reply":"2022-01-31T02:12:35.346560Z"}}
-# https://www.kaggle.com/ryanholbrook/feature-engineering-for-house-prices
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.99, random_state=13)
 #y_train = df.loc[:,"SalePrice"]
 
@@ -325,7 +300,16 @@ print(output.shape) #(438, 2)
 print(output.head())
 output.to_csv('my_submission.csv', index=False)
 print("Your submission was successfully saved!")
-#ValueError: Found input variables with inconsistent numbers of samples: [1022, 1460]
+'''
+(1446, 2)
+      Id      SalePrice
+337    0  193397.452996
+1438   1  197629.837241
+909    2  192646.634186
+219    3  185846.755772
+199    4  236437.979370
+Your submission was successfully saved!
+'''
 
 # %% [markdown]
 # Helpful Resources:
