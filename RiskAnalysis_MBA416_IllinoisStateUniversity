@@ -1,0 +1,201 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "4596082f",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003649,
+     "end_time": "2025-06-12T13:55:03.033649",
+     "exception": false,
+     "start_time": "2025-06-12T13:55:03.030000",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Risk Analysis for a New Product Launch\n",
+    "The management of Madeira Computing is considering the introduction of a wearable electronic device with the functionality of a phone. The fixed cost to launch this new product is 300,000.  The variable cost for the product is expected to be between 160 and 240, with a most likely value (mode) of 200 per unit. The product will sell for 300 per unit. Demand for the product is expected to range from 0 to approximately 20,000 units, with 4,000 units being the most likely (i.e. the mode)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "c726ccb7",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-06-12T13:55:03.041318Z",
+     "iopub.status.busy": "2025-06-12T13:55:03.040685Z",
+     "iopub.status.idle": "2025-06-12T13:55:04.044431Z",
+     "shell.execute_reply": "2025-06-12T13:55:04.042731Z"
+    },
+    "papermill": {
+     "duration": 1.011171,
+     "end_time": "2025-06-12T13:55:04.047630",
+     "exception": false,
+     "start_time": "2025-06-12T13:55:03.036459",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Starting projected profit simulation:\n",
+      "0.73  profit chance\n",
+      "0.27  loss chance\n",
+      "$ 320446.2\n",
+      "Calculations Done.\n"
+     ]
+    }
+   ],
+   "source": [
+    "from scipy.stats import gamma\n",
+    "import statistics\n",
+    "import random\n",
+    "import numpy as np\n",
+    "\n",
+    "print(\"Starting projected profit simulation:\")\n",
+    "#Variables:\n",
+    "sell_price=300\n",
+    "fixed_cost=300_000\n",
+    "estimations=1000\n",
+    "\n",
+    "#Storing for calculations:\n",
+    "profitList=[]\n",
+    "loss_count=0\n",
+    "profit_count=0\n",
+    "\n",
+    "variableList=list(range(160, 241))\n",
+    "shape, scale = 2, 3  \n",
+    "unitList = list(np.random.gamma(2, 3, 1000)*1000)\n",
+    "\n",
+    "for num in range(estimations+1):\n",
+    "    rand_variable_cost=random.choice(variableList)\n",
+    "    rand_units=random.choice(unitList)\n",
+    "    margin_cost=sell_price-rand_variable_cost\n",
+    "    margin_money=margin_cost*rand_units\n",
+    "    profit=margin_money-fixed_cost\n",
+    "    profitList.append(profit)\n",
+    "    \n",
+    "    if profit>0:\n",
+    "        profit_count+=1\n",
+    "    else:\n",
+    "        loss_count+=1\n",
+    "        \n",
+    "print(round(profit_count/len(profitList),2), \" profit chance\")\n",
+    "print(round(loss_count/len(profitList),2), \" loss chance\")\n",
+    "print(\"$\", round(statistics.mean(profitList), 2))\n",
+    "print(\"Calculations Done.\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "7d712a96",
+   "metadata": {
+    "papermill": {
+     "duration": 0.001707,
+     "end_time": "2025-06-12T13:55:04.051592",
+     "exception": false,
+     "start_time": "2025-06-12T13:55:04.049885",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "### Gamma Distribution Graph\n",
+    "Demand Distribution: Assume that the product demand can be well-approximated as 1,000 times the value of a gamma random variable with an alpha parameter of 3 and a beta parameter of 2. This is unitList that is randomly generated and then graphed. "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "5f005ee1",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-06-12T13:55:04.057939Z",
+     "iopub.status.busy": "2025-06-12T13:55:04.057274Z",
+     "iopub.status.idle": "2025-06-12T13:55:04.552769Z",
+     "shell.execute_reply": "2025-06-12T13:55:04.551493Z"
+    },
+    "papermill": {
+     "duration": 0.502326,
+     "end_time": "2025-06-12T13:55:04.555764",
+     "exception": false,
+     "start_time": "2025-06-12T13:55:04.053438",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "image/png": "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\n",
+      "text/plain": [
+       "<Figure size 432x288 with 1 Axes>"
+      ]
+     },
+     "metadata": {
+      "needs_background": "light"
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "import matplotlib.pyplot as plt\n",
+    "import scipy.special as sps  \n",
+    "def plotGamma():\n",
+    "    count, bins, ignored = plt.hist(unitList, 50, density=True)\n",
+    "    y = bins**(shape-1)*(np.exp(-bins/scale) /  \n",
+    "                         (sps.gamma(shape)*scale**shape))\n",
+    "    plt.plot(bins, y, linewidth=2, color='r')\n",
+    "    plt.show()\n",
+    "plotGamma()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "none",
+   "dataSources": [],
+   "dockerImageVersionId": 30301,
+   "isGpuEnabled": false,
+   "isInternetEnabled": true,
+   "language": "python",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.7.12"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 13.07334,
+   "end_time": "2025-06-12T13:55:05.686238",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2025-06-12T13:54:52.612898",
+   "version": "2.3.4"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
